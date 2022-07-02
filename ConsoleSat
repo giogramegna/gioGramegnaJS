@@ -1,0 +1,33 @@
+desc:ConsoleSat
+
+slider1:drive=0<0,100,1>Drive (%):
+slider2:output=0<-24,24,0.1>Output Gain (dB):
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+
+@slider
+drv=drive+1;
+out=2^(output/6);
+
+@block
+
+
+@sample
+
+spl0 > 0 ? spl0 = sin(atan(drv*spl0)):
+           spl0 = atan(drv*sin(spl0));
+           
+           
+spl1 > 0 ? spl1 = sin(atan(drv*spl1)):
+           spl1 = atan(drv*sin(spl1));
+           
+spl0*=1/drv*out;
+spl1*=1/drv*out;
+
+
