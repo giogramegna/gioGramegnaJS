@@ -1,0 +1,323 @@
+desc:Pre73 Stereo
+
+slider1:drive=0<0,100,1>Input Drive (%):
+slider2:output=0<-24,24,0.1>Output Gain (dB):
+
+
+@init
+ext_noinit  = 1;
+rnd1 = rand()/5 + 0.75; rnd2 = rand()/5 + 0.75;
+rnd3 = rand()/5 + 0.75; rnd4 = rand()/5 + 0.75;
+rnd5 = rand()/5 + 0.75; rnd6 = rand()/5 + 0.75;
+rnd7 = rand()/5 + 0.75; rnd8 = rand()/5 + 0.75;
+
+
+function bqd(xn)
+  instance(a0,a1,a2,b1,b2,c0,d0,z1,z2,xn,xn_1,xn_2,yn,yn_1,yn_2)
+(
+    yn = xn * a0 + z1;
+    z1 = xn * a1 + z2 - b1 * yn;
+    z2 = xn * a2 - b2 * yn;
+    yn;
+);
+
+function hp1Set(F)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  F ?
+  (
+    Oc=2*$pi*F/srate;
+    Y=cos(Oc)/(1+sin(Oc));
+    a0 = (1+Y)/2;
+    a1 = -(1+Y)/2;
+    a2 = 0;
+    b1 = -Y;
+    b2 = 0;
+    c0 = 1;
+    d0 = 0;
+  ):(a0 = c0 =  1; a1 = a2 = b1 = b2 = d0 = 0;)
+);
+
+function lp1Set(F)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  F ?
+  (
+    Oc=2*$pi*F/srate;
+    Y=cos(Oc)/(1+sin(Oc));
+    a0 = (1-Y)/2;
+    a1 = (1-Y)/2;
+    a2 = 0;
+    b1 = -Y;
+    b2 = 0;
+    c0 = 1;
+    d0 = 0;
+  ):(a0 = c0 =  1; a1 = a2 = b1 = b2 = d0 = 0;)
+);
+
+function hp2Set(F,Q)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  F ?
+  (
+    V = 10^(abs(peakGain)/ 20.0);
+    K = tan($pi * F/srate);
+    norm = 1 / (1 + K / Q + K * K);
+    a0 = 1 * norm;
+    a1 = -2 * a0;
+    a2 = a0;
+    b1 = 2 * (K * K - 1) * norm;
+    b2 = (1 - K / Q + K * K) * norm;
+    c0 = 1;
+    d0 = 0;
+  ):(a0 = c0 =  1; a1 = a2 = b1 = b2 = d0 = 0;)
+);
+
+
+function lp2Set(F,Q)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  F ?
+  (
+    V = 10^(abs(peakGain)/ 20.0);
+    K = tan($pi * F/srate);
+    norm = 1 / (1 + K / Q + K * K);
+    a0 = K * K * norm;
+    a1 = 2 * a0;
+    a2 = a0;
+    b1 = 2 * (K * K - 1) * norm;
+    b2 = (1 - K / Q + K * K) * norm;
+    c0 = 1;
+    d0 = 0;
+  ):(a0 = c0 =  1; a1 = a2 = b1 = b2 = d0 = 0;)
+);
+
+function lsSet(F,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + sqrt(2) * K + K * K);
+      a0 = (1 + sqrt(2*V) * K + V * K * K) * norm;
+      a1 = 2 * (V * K * K - 1) * norm;
+      a2 = (1 - sqrt(2*V) * K + V * K * K) * norm;
+      b1 = 2 * (K * K - 1) * norm;
+      b2 = (1 - sqrt(2) * K + K * K) * norm;
+  ):(
+      norm = 1 / (1 + sqrt(2*V) * K + V * K * K);
+      a0 = (1 + sqrt(2) * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - sqrt(2) * K + K * K) * norm;
+      b1 = 2 * (V * K * K - 1) * norm;
+      b2 = (1 - sqrt(2*V) * K + V * K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+function hsSet(F,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + sqrt(2) * K + K * K);
+      a0 = (V + sqrt(2*V) * K + K * K) * norm;
+      a1 = 2 * (K * K - V) * norm;
+      a2 = (V - sqrt(2*V) * K + K * K) * norm;
+      b1 = 2 * (K * K - 1) * norm;
+      b2 = (1 - sqrt(2) * K + K * K) * norm;
+  ):(
+      norm = 1 / (V + sqrt(2*V) * K + K * K);
+      a0 = (1 + sqrt(2) * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - sqrt(2) * K + K * K) * norm;
+      b1 = 2 * (K * K - V) * norm;
+      b2 = (V - sqrt(2*V) * K + K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+function p1Set(F,Q,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + 1/Q * K + K * K);
+      a0 = (1 + V/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - V/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - 1/Q * K + K * K) * norm;
+  ):(
+      norm = 1 / (1 + V/Q * K + K * K);
+      a0 = (1 + 1/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - 1/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - V/Q * K + K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+function p2Set(F,Q,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + 1/Q * K + K * K);
+      a0 = (1 + V/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - V/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - 1/Q * K + K * K) * norm;
+  ):(
+      norm = 1 / (1 + V/Q * K + K * K);
+      a0 = (1 + 1/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - 1/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - V/Q * K + K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+function p3Set(F,Q,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + 1/Q * K + K * K);
+      a0 = (1 + V/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - V/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - 1/Q * K + K * K) * norm;
+  ):(
+      norm = 1 / (1 + V/Q * K + K * K);
+      a0 = (1 + 1/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - 1/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - V/Q * K + K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+function p4Set(F,Q,peakGain)
+  instance(a0,a1,a2,b1,b2,c0,d0,xn,xn_1,xn_2,yn,yn_1,yn_2,V,K,norm,F,Q,peakGain)
+(
+  V = 10^(abs(peakGain)/ 20.0);
+  K = tan($pi * F/srate);
+  peakGain >= 0  ?  // boost
+  (
+      norm = 1 / (1 + 1/Q * K + K * K);
+      a0 = (1 + V/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - V/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - 1/Q * K + K * K) * norm;
+  ):(
+      norm = 1 / (1 + V/Q * K + K * K);
+      a0 = (1 + 1/Q * K + K * K) * norm;
+      a1 = 2 * (K * K - 1) * norm;
+      a2 = (1 - 1/Q * K + K * K) * norm;
+      b1 = a1;
+      b2 = (1 - V/Q * K + K * K) * norm;
+  );
+  c0 = 1; d0 = 0;
+);
+
+color.hp1F=0;   color.lp1F=21800;
+color.hp2F=20;    color.hp2Q=1.2; 
+color.lp2F=22000;    color.lp2Q=0.95;
+color.lsF=0;   color.lsG=0;
+color.hsF=0; color.hsG=0;
+color.p1F=150;   color.p1Q=0.6;    color.p1G=-0.1;
+color.p2F=19000;  color.p2Q=0.3;    color.p2G=2; 
+color.p3F=500;  color.p3Q=0.3;    color.p3G=-0.2; 
+color.p4F=8000;  color.p4Q=0.6;    color.p4G=-1.5; 
+  
+hp1L.hp1Set(max(color.hp1F*rnd8,0));
+lp1L.lp1Set(min(color.lp1F*rnd7,22000));
+hp2L.hp2Set(max(color.hp2F*rnd6,0),max(color.hp2Q*rnd6,0));
+lp2L.lp2Set(min(color.lp2F*rnd5,22000),max(color.lp2Q*rnd5,0));
+lsL.lsSet(color.lsF*rnd4,color.lsG*rnd4);
+hsL.hsSet(color.hsF*rnd3,color.hsG*rnd3);
+p1L.p1Set(color.p1F*rnd2,color.p1Q*rnd2,color.p1G*rnd2);
+p2L.p2Set(color.p2F*rnd1,color.p2Q*rnd1,color.p2G*rnd1);
+p3L.p3Set(color.p3F*rnd2,color.p3Q*rnd2,color.p3G*rnd2);
+p4L.p4Set(color.p4F*rnd1,color.p4Q*rnd1,color.p4G*rnd1);
+
+hp1R.hp1Set(max(color.hp1F*rnd1,0));
+lp1R.lp1Set(min(color.lp1F*rnd2,22000));
+hp2R.hp2Set(max(color.hp2F*rnd3,0),max(color.hp2Q*rnd3,0));
+lp2R.lp2Set(min(color.lp2F*rnd4,22000),max(color.lp2Q*rnd4,0));
+lsR.lsSet(color.lsF*rnd5,color.lsG*rnd5);
+hsR.hsSet(color.hsF*rnd6,color.hsG*rnd6);
+p1R.p1Set(color.p1F*rnd7,color.p1Q*rnd7,color.p1G*rnd7);
+p2R.p2Set(color.p2F*rnd8,color.p2Q*rnd8,color.p2G*rnd8);
+p3R.p3Set(color.p3F*rnd8,color.p3Q*rnd8,color.p3G*rnd8);
+p4R.p4Set(color.p4F*rnd8,color.p4Q*rnd8,color.p4G*rnd8);
+
+
+empL.p1Set(2500*rnd1,0.01,-50);
+dempL.p1Set(2500*rnd1,0.01,50);
+empR.p1Set(2500*rnd2,0.01,-50);
+dempR.p1Set(2500*rnd2,0.01,50);
+
+@slider
+out=2^(output/6);
+drv = drive*30+1;
+@block
+
+@sample
+spl0=empL.bqd(spl0);
+spl1=empR.bqd(spl1);
+
+spl0 > 0 ? spl0 = sin(atan(drv*spl0)):
+           spl0 = atan(drv*sin(spl0));
+           
+           
+spl1 > 0 ? spl1 = sin(atan(drv*spl1)):
+           spl1 = atan(drv*sin(spl1));
+
+spl0=dempL.bqd(spl0);
+spl1=dempR.bqd(spl1);
+
+spl0=hp1L.bqd(spl0);
+spl0=lp1L.bqd(spl0);
+spl0=hp2L.bqd(spl0);
+spl0=lp2L.bqd(spl0);
+spl0=lsL.bqd(spl0);
+spl0=hsL.bqd(spl0);
+spl0=p1L.bqd(spl0);
+spl0=p2L.bqd(spl0);
+spl0=p3L.bqd(spl0);
+spl0=p4L.bqd(spl0);
+
+spl1=hp1R.bqd(spl1);
+spl1=lp1R.bqd(spl1);
+spl1=hp2R.bqd(spl1);
+spl1=lp2R.bqd(spl1);
+spl1=lsR.bqd(spl1);
+spl1=hsR.bqd(spl1);
+spl1=p1R.bqd(spl1);
+spl1=p2R.bqd(spl1);
+spl1=p3R.bqd(spl1);
+spl1=p4R.bqd(spl1);
+
+
+spl0 /= drv;
+spl1 /= drv;
+
+spl0 *= out;
+spl1 *= out;

@@ -1,0 +1,49 @@
+desc:Comp3
+
+slider1:0<-36,48,1>Input Gain (dB):
+slider2:0<0,100,1>Compression Amount (%):
+slider3:0<-24,24,0.1>Make-up Gain (dB):
+slider4:0<0,1>Compression:
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+rms = spl0;
+
+@slider
+inGain = 10^(slider1/20);
+outGain = 10^(slider3/20);
+spd = slider2/10;
+
+@block
+
+@sample
+
+spl0 *= inGain;
+spl1 *= inGain;
+
+rms = abs(sin(atan(spl0+spl1)))*0.005 + rms*0.995;
+
+abs(sin(atan((spl0+spl1)/2))) > rms2  ? rms2 += 0.00005;
+rms2 > 0  ? rms2 -= 0.001;
+
+rms2 *= 0.99999999;
+
+rms3 = 0.3*rms + 0.7*rms2;
+
+gr = sin(atan(rms3*slider2/10));
+
+
+slider4 = gr;
+
+spl0 /= inGain;
+spl1 /= inGain;
+
+
+
+spl0 *= outGain*(1-gr);
+spl1 *= outGain*(1-gr);
+

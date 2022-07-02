@@ -1,0 +1,46 @@
+desc:Comp2
+
+slider1:0<-36,48,1>Input Gain (dB):
+slider2:1<1,10,1>Recovery (Slow -> Fast):
+slider3:0<-24,24,0.1>Make-up Gain (dB):
+slider4:0<0,100>Compression:
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+rms = spl0;
+
+@slider
+inGain = 10^(slider1/20);
+outGain = 10^(slider3/20);
+spd = slider2/10;
+
+@block
+
+@sample
+
+spl0 *= inGain;
+spl1 *= inGain;
+
+abs((spl0+spl1)/2) > rms && rms <= 3 ? rms += 0.003;
+abs((spl0+spl1)/2) < rms && rms >= -3 ? rms -= 0.0004*spd;
+
+
+gr = (1-(rms/3))*0.1 + gr_1*0.9;
+
+gr_1 = gr;
+
+
+slider4 = floor((1-gr)*100);
+
+spl0 /= inGain;
+spl1 /= inGain;
+
+
+
+spl0 *= outGain*gr;
+spl1 *= outGain*gr;
+
